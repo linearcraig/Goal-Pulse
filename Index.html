@@ -1,0 +1,479 @@
+```react
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Activity,
+  Volume2,
+  Mic,
+  Zap,
+  Globe,
+  Bell,
+  BellRing,
+  Sparkles,
+  Search,
+  Info,
+  BellOff,
+  Bot,
+  X,
+  ChevronRight,
+  Trophy,
+  Filter
+} from 'lucide-react';
+
+// Initial Mock Match Data across top leagues
+const INITIAL_MATCHES = [
+  {
+    id: "m1",
+    league: "Premier League",
+    homeTeam: "Arsenal",
+    homeCode: "ARS",
+    awayTeam: "Chelsea",
+    awayCode: "CHE",
+    homeScore: 2,
+    awayScore: 1,
+    minute: 68,
+    status: "LIVE",
+    isPinned: true,
+    stats: { homePoss: 54, awayPoss: 46, homeXg: "1.85", awayXg: "1.10", homeShots: 12, awayShots: 8, homeOnTarget: 5, awayOnTarget: 3, fouls: 9 },
+    timeline: [
+      { minute: "14'", type: "goal", title: "GOAL! Arsenal", desc: "B. Saka scores with a low curling strike into the bottom left corner." },
+      { minute: "32'", type: "yellow", title: "Yellow Card", desc: "M. Caicedo booked for a tactical foul." },
+      { minute: "45+1'", type: "goal", title: "GOAL! Chelsea", desc: "C. Palmer equalizes from the penalty spot." },
+      { minute: "58'", type: "goal", title: "GOAL! Arsenal", desc: "K. Havertz heads in from a corner kick!" }
+    ]
+  },
+  {
+    id: "m2",
+    league: "Premier League",
+    homeTeam: "Manchester City",
+    homeCode: "MCI",
+    awayTeam: "Liverpool",
+    awayCode: "LIV",
+    homeScore: 1,
+    awayScore: 1,
+    minute: 41,
+    status: "LIVE",
+    isPinned: false,
+    stats: { homePoss: 61, awayPoss: 39, homeXg: "1.40", awayXg: "0.95", homeShots: 9, awayShots: 6, homeOnTarget: 4, awayOnTarget: 2, fouls: 6 },
+    timeline: [
+      { minute: "19'", type: "goal", title: "GOAL! Man City", desc: "E. Haaland unleashes a powerful shot past the keeper." },
+      { minute: "37'", type: "goal", title: "GOAL! Liverpool", desc: "M. Salah converts a swift counter-attack." }
+    ]
+  },
+  {
+    id: "m3",
+    league: "UEFA Champions League",
+    homeTeam: "Real Madrid",
+    homeCode: "RMA",
+    awayTeam: "Bayern Munich",
+    awayCode: "BAY",
+    homeScore: 0,
+    awayScore: 0,
+    minute: 12,
+    status: "LIVE",
+    isPinned: true,
+    stats: { homePoss: 50, awayPoss: 50, homeXg: "0.25", awayXg: "0.30", homeShots: 3, awayShots: 3, homeOnTarget: 1, awayOnTarget: 1, fouls: 4 },
+    timeline: [
+      { minute: "8'", type: "yellow", title: "Yellow Card", desc: "A. Rüdiger penalised for a late challenge." }
+    ]
+  },
+  {
+    id: "m4",
+    league: "La Liga",
+    homeTeam: "Barcelona",
+    homeCode: "BAR",
+    awayTeam: "Atletico Madrid",
+    awayCode: "ATM",
+    homeScore: 3,
+    awayScore: 0,
+    minute: 89,
+    status: "LIVE",
+    isPinned: false,
+    stats: { homePoss: 68, awayPoss: 32, homeXg: "2.70", awayXg: "0.40", homeShots: 16, awayShots: 4, homeOnTarget: 8, awayOnTarget: 1, fouls: 11 },
+    timeline: [
+      { minute: "22'", type: "goal", title: "GOAL! Barcelona", desc: "R. Lewandowski taps in from close range." },
+      { minute: "51'", type: "goal", title: "GOAL! Barcelona", desc: "L. Yamal curls a brilliant shot into the top corner." },
+      { minute: "78'", type: "red", title: "RED CARD! Atletico", desc: "R. De Paul sent off for a second yellow." },
+      { minute: "82'", type: "goal", title: "GOAL! Barcelona", desc: "R. Raphinha scores from a direct free kick." }
+    ]
+  },
+  {
+    id: "m5",
+    league: "Scottish Premiership",
+    homeTeam: "Celtic",
+    homeCode: "CEL",
+    awayTeam: "Rangers",
+    awayCode: "RAN",
+    homeScore: 1,
+    awayScore: 0,
+    minute: 55,
+    status: "LIVE",
+    isPinned: false,
+    stats: { homePoss: 57, awayPoss: 43, homeXg: "1.20", awayXg: "0.80", homeShots: 8, awayShots: 5, homeOnTarget: 4, awayOnTarget: 2, fouls: 14 },
+    timeline: [
+      { minute: "40'", type: "goal", title: "GOAL! Celtic", desc: "Kyogo Furuhashi scores a neat volley." }
+    ]
+  },
+  {
+    id: "m6",
+    league: "Serie A",
+    homeTeam: "Inter Milan",
+    homeCode: "INT",
+    awayTeam: "AC Milan",
+    awayCode: "ACM",
+    homeScore: 2,
+    awayScore: 2,
+    minute: 90,
+    status: "FINISHED",
+    isPinned: false,
+    stats: { homePoss: 51, awayPoss: 49, homeXg: "1.90", awayXg: "1.85", homeShots: 14, awayShots: 13, homeOnTarget: 6, awayOnTarget: 5, fouls: 12 },
+    timeline: [
+      { minute: "15'", type: "goal", title: "GOAL! Inter", desc: "L. Martinez headers in from a cross." },
+      { minute: "44'", type: "goal", title: "GOAL! AC Milan", desc: "R. Leao sprint & finish." },
+      { minute: "63'", type: "goal", title: "GOAL! AC Milan", desc: "C. Pulisic strike." },
+      { minute: "88'", type: "goal", title: "GOAL! Inter", desc: "N. Barella dramatically equalizes." }
+    ]
+  }
+];
+
+export default function App() {
+  const [matches, setMatches] = useState(INITIAL_MATCHES);
+  const [activeTab, setActiveTab] = useState('all'); // 'all', 'pinned', 'ai'
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedLeague, setSelectedLeague] = useState('ALL');
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [ttsEnabled, setTtsEnabled] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState('Just now');
+  const [toasts, setToasts] = useState([]);
+  const [selectedMatch, setSelectedMatch] = useState(null);
+  const [modalTab, setModalTab] = useState('stats');
+
+  // AI Analyst state
+  const [aiMatchId, setAiMatchId] = useState('m1');
+  const [aiPerspective, setAiPerspective] = useState('tactical');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiReport, setAiReport] = useState(null);
+
+  // Audio synthesizer ref
+  const audioCtxRef = useRef(null);
+
+  // Initialize Web Audio Context on first interaction
+  const initAudioCtx = () => {
+    if (!audioCtxRef.current) {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (AudioContextClass) {
+        audioCtxRef.current = new AudioContextClass();
+      }
+    }
+    if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+      audioCtxRef.current.resume();
+    }
+  };
+
+  const playGoalSound = () => {
+    if (!soundEnabled) return;
+    initAudioCtx();
+    const ctx = audioCtxRef.current;
+    if (!ctx) return;
+
+    try {
+      const now = ctx.currentTime;
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc1.type = 'triangle';
+      osc1.frequency.setValueAtTime(880, now);
+      osc1.frequency.exponentialRampToValueAtTime(1760, now + 0.3);
+
+      osc2.type = 'sawtooth';
+      osc2.frequency.setValueAtTime(523.25, now);
+      osc2.frequency.exponentialRampToValueAtTime(1046.50, now + 0.4);
+
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc1.start(now);
+      osc2.start(now);
+      osc1.stop(now + 0.8);
+      osc2.stop(now + 0.8);
+    } catch (e) {
+      console.warn("Audio Context playback warning:", e);
+    }
+  };
+
+  const speakAlert = (text) => {
+    if (!ttsEnabled || !('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.05;
+    utterance.pitch = 1.1;
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const addToast = (title, body) => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, title, body }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 6000);
+  };
+
+  const togglePin = (id, e) => {
+    if (e) e.stopPropagation();
+    setMatches(prev => prev.map(m => {
+      if (m.id === id) {
+        const updatedPin = !m.isPinned;
+        if (updatedPin) {
+          addToast("Match Tracked!", `You will now receive score alerts for ${m.homeTeam} vs ${m.awayTeam}.`);
+        }
+        return { ...m, isPinned: updatedPin };
+      }
+      return m;
+    }));
+  };
+
+  const triggerGoalSimulation = () => {
+    initAudioCtx();
+    const liveMatches = matches.filter(m => m.status === 'LIVE');
+    if (liveMatches.length === 0) return;
+
+    const target = liveMatches[Math.floor(Math.random() * liveMatches.length)];
+    const isHomeGoal = Math.random() > 0.5;
+    const scoringTeam = isHomeGoal ? target.homeTeam : target.awayTeam;
+
+    const updatedMatches = matches.map(m => {
+      if (m.id === target.id) {
+        const newHome = isHomeGoal ? m.homeScore + 1 : m.homeScore;
+        const newAway = !isHomeGoal ? m.awayScore + 1 : m.awayScore;
+        const newMin = Math.min(90, m.minute + Math.floor(Math.random() * 4) + 1);
+
+        const newTimeline = [
+          ...m.timeline,
+          {
+            minute: `${newMin}'`,
+            type: 'goal',
+            title: `GOAL! ${scoringTeam}`,
+            desc: `Dramatic goal scored! ${m.homeTeam} ${newHome} - ${newAway} ${m.awayTeam}`
+          }
+        ];
+
+        return {
+          ...m,
+          homeScore: newHome,
+          awayScore: newAway,
+          minute: newMin,
+          timeline: newTimeline
+        };
+      }
+      return m;
+    });
+
+    setMatches(updatedMatches);
+
+    // Update selected match modal if open
+    if (selectedMatch && selectedMatch.id === target.id) {
+      const updatedTarget = updatedMatches.find(m => m.id === target.id);
+      setSelectedMatch(updatedTarget);
+    }
+
+    const targetUpdated = updatedMatches.find(m => m.id === target.id);
+    const alertMessage = `GOAL! ${scoringTeam} score! ${targetUpdated.homeTeam} ${targetUpdated.homeScore} - ${targetUpdated.awayScore} ${targetUpdated.awayTeam} (${targetUpdated.minute}')`;
+
+    playGoalSound();
+    addToast(`${scoringTeam} SCORES!`, alertMessage);
+    speakAlert(alertMessage);
+    setLastUpdated(new Date().toLocaleTimeString());
+  };
+
+  const filteredMatches = matches.filter(m => {
+    const matchesSearch = m.homeTeam.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          m.awayTeam.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          m.league.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesLeague = selectedLeague === 'ALL' || m.league === selectedLeague;
+    const matchesPinned = activeTab === 'pinned' ? m.isPinned : true;
+    return matchesSearch && matchesLeague && matchesPinned;
+  });
+
+  const runAiAnalysis = async () => {
+    const match = matches.find(m => m.id === aiMatchId);
+    if (!match) return;
+
+    setAiLoading(true);
+    setAiReport(null);
+
+    const prompt = `Act as an expert football tactical analyst. Analyze this match:
+    Match: ${match.homeTeam} (${match.homeScore}) vs ${match.awayTeam} (${match.awayScore}) in ${match.league}.
+    Match Minute: ${match.minute}'.
+    Stats: Home xG ${match.stats.homeXg}, Away xG ${match.stats.awayXg}, Possession ${match.stats.homePoss}% - ${match.stats.awayPoss}%.
+    Perspective requested: ${aiPerspective}.
+
+    Provide a concise, engaging 3-paragraph tactical assessment including key insights, structural strengths/weaknesses, and realistic second-half adjustments or expected outcome.`;
+
+    try {
+      const apiKey = "";
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+
+      let delay = 1000;
+      let responseText = "";
+
+      for (let attempt = 0; attempt < 5; attempt++) {
+        try {
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json();
+          responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (responseText) break;
+        } catch (err) {
+          if (attempt === 4) throw err;
+          await new Promise(r => setTimeout(r, delay));
+          delay *= 2;
+        }
+      }
+
+      setAiReport({
+        title: `Tactical Report: ${match.homeTeam} vs ${match.awayTeam}`,
+        time: new Date().toLocaleTimeString(),
+        text: responseText || "Analysis generated successfully."
+      });
+    } catch (err) {
+      setAiReport({
+        title: `Tactical Report: ${match.homeTeam} vs ${match.awayTeam}`,
+        time: new Date().toLocaleTimeString(),
+        text: `${match.homeTeam} are currently holding ${match.stats.homePoss}% possession and creating higher quality opportunities (xG ${match.stats.homeXg}).\n\n${match.awayTeam} need to push higher up the pitch to regain control in key central areas and generate counter-attacking transitions.`
+      });
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  return (
+    <div className="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col antialiased selection:bg-emerald-500 selection:text-slate-900">
+      
+      {/* Toast Overlay */}
+      <div className="fixed top-20 right-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none">
+        {toasts.map(toast => (
+          <div key={toast.id} className="pointer-events-auto bg-slate-900 border border-emerald-500/50 rounded-2xl p-4 shadow-2xl flex items-start gap-3 transition-all text-slate-100 ring-2 ring-emerald-500/20 animate-bounce-short">
+            <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              <Trophy className="w-5 h-5" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-400">SCORE NOTIFICATION</h4>
+                <span className="text-[10px] text-slate-400">Just Now</span>
+              </div>
+              <p className="text-sm font-bold mt-0.5 text-slate-100">{toast.title}</p>
+              <p className="text-xs text-slate-300 mt-1">{toast.body}</p>
+            </div>
+            <button onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))} className="text-slate-500 hover:text-slate-300">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4">
+
+        {/* Top Header */}
+        <header className="flex flex-wrap items-center justify-between gap-4 py-3 px-4 bg-slate-900/90 border border-slate-800 rounded-2xl backdrop-blur-md shadow-xl sticky top-2 z-30">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-slate-950 shadow-lg shadow-emerald-500/20">
+              <Activity className="w-6 h-6 stroke-[2.5]" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+                GoalPulse
+              </h1>
+              <p className="text-xs text-slate-400 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                Real-Time Score Alert Engine
+              </p>
+            </div>
+          </div>
+
+          {/* Controls */}
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+            <button
+              onClick={() => setSoundEnabled(!soundEnabled)}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 transition-all"
+            >
+              <Volume2 className={`w-4 h-4 ${soundEnabled ? 'text-emerald-400' : 'text-slate-500'}`} />
+              <span className="hidden sm:inline">{soundEnabled ? 'Audio Alerts ON' : 'Audio Alerts OFF'}</span>
+            </button>
+
+            <button
+              onClick={() => setTtsEnabled(!ttsEnabled)}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200 transition-all"
+            >
+              <Mic className={`w-4 h-4 ${ttsEnabled ? 'text-emerald-400' : 'text-slate-400'}`} />
+              <span className="hidden sm:inline">{ttsEnabled ? 'Voice ON' : 'Voice OFF'}</span>
+            </button>
+
+            <button
+              onClick={triggerGoalSimulation}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 transition-all shadow-md shadow-emerald-500/20 active:scale-95"
+            >
+              <Zap className="w-4 h-4" />
+              <span>Simulate Score Alert</span>
+            </button>
+          </div>
+        </header>
+
+        {/* Tab & Filter Bar */}
+        <div className="mt-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-1.5 bg-slate-900/80 p-1.5 rounded-2xl border border-slate-800 w-full md:w-auto">
+            <button
+              onClick={() => setActiveTab('all')}
+              className={`flex-1 md:flex-none px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'all' ? 'bg-emerald-500 text-slate-950 shadow' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}
+            >
+              <Globe className="w-4 h-4" />
+              All Fixtures ({matches.length})
+            </button>
+
+            <button
+              onClick={() => setActiveTab('pinned')}
+              className={`flex-1 md:flex-none px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'pinned' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}
+            >
+              <Bell className="w-4 h-4 text-amber-400" />
+              Tracked Games ({matches.filter(m => m.isPinned).length})
+            </button>
+
+            <button
+              onClick={() => setActiveTab('ai')}
+              className={`flex-1 md:flex-none px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-2 ${activeTab === 'ai' ? 'bg-purple-600 text-white shadow' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}
+            >
+              <Sparkles className="w-4 h-4 text-purple-400" />
+              AI Match Analyst
+            </button>
+          </div>
+
+          {activeTab !== 'ai' && (
+            <div className="flex items-center gap-2 flex-1 md:max-w-md">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search teams or league..."
+                  className="w-full bg-slate-900 border border-slate-800 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500 text-xs sm:text-sm text-slate-200 pl-9 pr-3 py-2 rounded-xl outline-none placeholder:text-slate-500 transition-all"
+                />
+              </div>
+              <select
+                value={selectedLeague}
+                onChange={(e) => setSelectedLeague(e.target.value)}
+                className="bg-slate-900 border border-slate-800 focus:border-emerald-500 text-xs sm:text-sm text-slate-300 px-3 py-2 rounded-xl outline-none transition-all"
+              >
+                <option value="ALL">All Leagues</option>
+                <option value="Premier League">Premier League</option>
+                <option value="UEFA Champions League">Champions League</option>
+                <option value="La Liga">La Liga</option>
+                <option value="Serie A">Serie A</option>
+  
