@@ -1,0 +1,269 @@
+```html
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GoalPulse - Live Football Score & Notification Hub</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React & React DOM -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <!-- Babel for JSX Compilation -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col antialiased selection:bg-emerald-500 selection:text-slate-900">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const INITIAL_MATCHES = [
+      {
+        id: "m1",
+        league: "Premier League",
+        homeTeam: "Arsenal",
+        homeCode: "ARS",
+        awayTeam: "Chelsea",
+        awayCode: "CHE",
+        homeScore: 2,
+        awayScore: 1,
+        minute: 68,
+        status: "LIVE",
+        isPinned: true,
+        stats: { homePoss: 54, awayPoss: 46, homeXg: "1.85", awayXg: "1.10", homeShots: 12, awayShots: 8, homeOnTarget: 5, awayOnTarget: 3, fouls: 9 },
+        timeline: [
+          { minute: "14'", type: "goal", title: "GOAL! Arsenal", desc: "B. Saka scores with a low curling strike." },
+          { minute: "32'", type: "yellow", title: "Yellow Card", desc: "M. Caicedo booked for a tactical foul." },
+          { minute: "45+1'", type: "goal", title: "GOAL! Chelsea", desc: "C. Palmer equalizes from the penalty spot." },
+          { minute: "58'", type: "goal", title: "GOAL! Arsenal", desc: "K. Havertz heads in from a corner kick!" }
+        ]
+      },
+      {
+        id: "m2",
+        league: "Premier League",
+        homeTeam: "Manchester City",
+        homeCode: "MCI",
+        awayTeam: "Liverpool",
+        awayCode: "LIV",
+        homeScore: 1,
+        awayScore: 1,
+        minute: 41,
+        status: "LIVE",
+        isPinned: false,
+        stats: { homePoss: 61, awayPoss: 39, homeXg: "1.40", awayXg: "0.95", homeShots: 9, awayShots: 6, homeOnTarget: 4, awayOnTarget: 2, fouls: 6 },
+        timeline: [
+          { minute: "19'", type: "goal", title: "GOAL! Man City", desc: "E. Haaland unleashes a powerful shot." },
+          { minute: "37'", type: "goal", title: "GOAL! Liverpool", desc: "M. Salah converts a swift counter-attack." }
+        ]
+      },
+      {
+        id: "m3",
+        league: "UEFA Champions League",
+        homeTeam: "Real Madrid",
+        homeCode: "RMA",
+        awayTeam: "Bayern Munich",
+        awayCode: "BAY",
+        homeScore: 0,
+        awayScore: 0,
+        minute: 12,
+        status: "LIVE",
+        isPinned: true,
+        stats: { homePoss: 50, awayPoss: 50, homeXg: "0.25", awayXg: "0.30", homeShots: 3, awayShots: 3, homeOnTarget: 1, awayOnTarget: 1, fouls: 4 },
+        timeline: [
+          { minute: "8'", type: "yellow", title: "Yellow Card", desc: "A. Rüdiger penalised for a late challenge." }
+        ]
+      },
+      {
+        id: "m4",
+        league: "La Liga",
+        homeTeam: "Barcelona",
+        homeCode: "BAR",
+        awayTeam: "Atletico Madrid",
+        awayCode: "ATM",
+        homeScore: 3,
+        awayScore: 0,
+        minute: 89,
+        status: "LIVE",
+        isPinned: false,
+        stats: { homePoss: 68, awayPoss: 32, homeXg: "2.70", awayXg: "0.40", homeShots: 16, awayShots: 4, homeOnTarget: 8, awayOnTarget: 1, fouls: 11 },
+        timeline: [
+          { minute: "22'", type: "goal", title: "GOAL! Barcelona", desc: "R. Lewandowski taps in from close range." },
+          { minute: "51'", type: "goal", title: "GOAL! Barcelona", desc: "L. Yamal curls a brilliant shot into top corner." },
+          { minute: "82'", type: "goal", title: "GOAL! Barcelona", desc: "R. Raphinha scores from a direct free kick." }
+        ]
+      }
+    ];
+
+    function GoalPulseApp() {
+      const [matches, setMatches] = useState(INITIAL_MATCHES);
+      const [activeTab, setActiveTab] = useState('all');
+      const [searchQuery, setSearchQuery] = useState('');
+      const [selectedLeague, setSelectedLeague] = useState('ALL');
+      const [soundEnabled, setSoundEnabled] = useState(true);
+      const [ttsEnabled, setTtsEnabled] = useState(false);
+      const [toasts, setToasts] = useState([]);
+      const [selectedMatch, setSelectedMatch] = useState(null);
+
+      useEffect(() => {
+        if (window.lucide) window.lucide.createIcons();
+      });
+
+      const addToast = (title, body) => {
+        const id = Date.now();
+        setToasts(prev => [...prev, { id, title, body }]);
+        setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 6000);
+      };
+
+      const togglePin = (id, e) => {
+        if (e) e.stopPropagation();
+        setMatches(prev => prev.map(m => {
+          if (m.id === id) {
+            const nextPinned = !m.isPinned;
+            if (nextPinned) addToast("Match Tracked!", `Tracking alerts for ${m.homeTeam} vs ${m.awayTeam}`);
+            return { ...m, isPinned: nextPinned };
+          }
+          return m;
+        }));
+      };
+
+      const triggerGoalSimulation = () => {
+        const liveMatches = matches.filter(m => m.status === 'LIVE');
+        if (!liveMatches.length) return;
+        const target = liveMatches[Math.floor(Math.random() * liveMatches.length)];
+        const isHome = Math.random() > 0.5;
+        const scoringTeam = isHome ? target.homeTeam : target.awayTeam;
+
+        setMatches(prev => prev.map(m => {
+          if (m.id === target.id) {
+            const newHome = isHome ? m.homeScore + 1 : m.homeScore;
+            const newAway = !isHome ? m.awayScore + 1 : m.awayScore;
+            const newMin = Math.min(90, m.minute + 3);
+            return {
+              ...m,
+              homeScore: newHome,
+              awayScore: newAway,
+              minute: newMin,
+              timeline: [...m.timeline, { minute: `${newMin}'`, type: 'goal', title: `GOAL! ${scoringTeam}`, desc: `Score update!` }]
+            };
+          }
+          return m;
+        }));
+
+        addToast(`${scoringTeam} SCORES!`, `GOAL! ${scoringTeam} scored a goal!`);
+      };
+
+      const filteredMatches = matches.filter(m => {
+        const matchSearch = m.homeTeam.toLowerCase().includes(searchQuery.toLowerCase()) || m.awayTeam.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchLeague = selectedLeague === 'ALL' || m.league === selectedLeague;
+        const matchPinned = activeTab === 'pinned' ? m.isPinned : true;
+        return matchSearch && matchLeague && matchPinned;
+      });
+
+      return (
+        <div className="flex-1 flex flex-col max-w-7xl w-full mx-auto px-4 py-6">
+          {/* Header */}
+          <header className="flex flex-wrap items-center justify-between gap-4 py-3 px-4 bg-slate-900 border border-slate-800 rounded-2xl shadow-xl">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500 text-slate-950 flex items-center justify-center font-bold">
+                <i data-lucide="activity"></i>
+              </div>
+              <div>
+                <h1 className="text-xl font-bold">GoalPulse</h1>
+                <p className="text-xs text-slate-400">Live Football Alert Engine</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button onClick={() => setSoundEnabled(!soundEnabled)} className="px-3 py-1.5 text-xs bg-slate-800 border border-slate-700 rounded-xl">
+                <i data-lucide="volume-2" className="inline w-4 h-4 mr-1 text-emerald-400"></i>
+                {soundEnabled ? 'Audio ON' : 'Audio OFF'}
+              </button>
+              <button onClick={triggerGoalSimulation} className="px-3 py-1.5 text-xs bg-emerald-500 text-slate-950 font-semibold rounded-xl flex items-center gap-1 shadow">
+                <i data-lucide="zap" className="w-4 h-4"></i> Simulate Goal
+              </button>
+            </div>
+          </header>
+
+          {/* Navigation & Search */}
+          <div className="mt-6 flex flex-col md:flex-row gap-4 justify-between items-center">
+            <div className="flex gap-2 bg-slate-900 p-1.5 rounded-2xl border border-slate-800 w-full md:w-auto">
+              <button onClick={() => setActiveTab('all')} className={`px-4 py-2 text-xs font-semibold rounded-xl ${activeTab === 'all' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400'}`}>
+                All Fixtures ({matches.length})
+              </button>
+              <button onClick={() => setActiveTab('pinned')} className={`px-4 py-2 text-xs font-semibold rounded-xl ${activeTab === 'pinned' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'}`}>
+                Tracked Games ({matches.filter(m => m.isPinned).length})
+              </button>
+            </div>
+
+            <div className="flex gap-2 w-full md:max-w-md">
+              <input
+                type="text"
+                placeholder="Search team..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 text-xs px-3 py-2 rounded-xl text-slate-200 outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Toast Alerts */}
+          <div className="fixed top-20 right-4 z-50 flex flex-col gap-2 max-w-sm w-full">
+            {toasts.map(t => (
+              <div key={t.id} className="bg-slate-900 border border-emerald-500/50 p-4 rounded-2xl shadow-2xl flex justify-between items-start">
+                <div>
+                  <h4 className="text-xs font-bold text-emerald-400">{t.title}</h4>
+                  <p className="text-xs text-slate-200 mt-1">{t.body}</p>
+                </div>
+                <button onClick={() => setToasts(prev => prev.filter(x => x.id !== t.id))} className="text-slate-500">
+                  <i data-lucide="x" className="w-4 h-4"></i>
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* Matches Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+            {filteredMatches.map(m => (
+              <div key={m.id} className={`bg-slate-900 border ${m.isPinned ? 'border-amber-500/50' : 'border-slate-800'} rounded-2xl p-5 flex flex-col justify-between`}>
+                <div className="flex justify-between items-center border-b border-slate-800 pb-3 mb-3">
+                  <span className="text-xs text-slate-400">{m.league}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-emerald-400">{m.minute}'</span>
+                    <button onClick={e => togglePin(m.id, e)} className="text-slate-400 hover:text-amber-400">
+                      <i data-lucide={m.isPinned ? "bell-ring" : "bell"} className={`w-4 h-4 ${m.isPinned ? 'text-amber-400' : ''}`}></i>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2 cursor-pointer" onClick={() => setSelectedMatch(m)}>
+                  <div className="flex justify-between text-sm font-bold">
+                    <span>{m.homeTeam}</span>
+                    <span className="font-mono text-lg">{m.homeScore}</span>
+                  </div>
+                  <div className="flex justify-between text-sm font-bold">
+                    <span>{m.awayTeam}</span>
+                    <span className="font-mono text-lg">{m.awayScore}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<GoalPulseApp />);
+  </script>
+</body>
+</html>
+
+```
